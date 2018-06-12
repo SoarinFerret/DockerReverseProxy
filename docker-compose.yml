@@ -1,0 +1,60 @@
+version: '2'
+
+services:
+  nginx-proxy:
+    restart: always
+    image: jwilder/nginx-proxy:alpine
+    container_name: nginx-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/etc/nginx/vhost.d"
+      - "/usr/share/nginx/html"
+      - "certs:/etc/nginx/certs:ro"
+      - "/var/run/docker.sock:/tmp/docker.sock:ro"
+
+  nginx-letsencrypt:
+    restart: always
+    image: jrcs/letsencrypt-nginx-proxy-companion
+    container_name: nginx-letsencrypt
+    depends_on:
+      - nginx-proxy
+    volumes_from:
+      - nginx-proxy
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "certs:/etc/nginx/certs:rw"
+
+  test:
+    build: ./iptablesproxy
+    restart: always
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    environment:
+      - "SERVERIP=172.217.9.46"
+      - "SERVERPORT=80"
+      - "HOSTPORT=80"
+      - "VIRTUAL_HOST=example.com"
+      - "LETSENCRYPT_HOST=example.com"
+      - "LETSENCRYPT_EMAIL=admin@example.com"
+    expose:
+      - '80'
+  
+  test2:
+    build: ./iptablesproxy
+    restart: always
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    environment:
+      - "SERVERIP=172.217.9.46"
+      - "SERVERPORT=443"
+      - "HOSTPORT=443"
+      - "VIRTUAL_HOST=google.com"
+    expose:
+      - '443'
+
+volumes:
+  certs:
